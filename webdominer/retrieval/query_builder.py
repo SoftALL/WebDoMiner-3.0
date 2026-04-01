@@ -11,7 +11,7 @@ class SearchQuery:
 
     keyword: str
     query: str
-    strategy: str  # e.g. "exact_phrase", "broad_domain", "article_focused"
+    strategy: str
 
     def to_dict(self) -> dict:
         return {
@@ -21,62 +21,96 @@ class SearchQuery:
         }
 
 
+_HEALTHCARE_HINTS = {
+    "patient",
+    "patients",
+    "doctor",
+    "doctors",
+    "clinic",
+    "medical",
+    "ehr",
+    "emr",
+    "appointment",
+    "appointments",
+    "billing",
+    "insurance",
+    "schedule",
+    "scheduling",
+    "availability",
+    "visit",
+    "visits",
+    "reminder",
+    "reminders",
+}
+
+
 class QueryBuilder:
     """
     Build search-engine-friendly queries from cleaned keyword phrases.
 
-    We do not want to search raw phrases blindly. Instead, we generate a small
-    set of useful query forms that improve recall while keeping relevance high.
+    The main design goal is to avoid over-generic expansions that attract
+    dictionary pages, help-center pages, or language-usage pages.
     """
 
     def build_queries_for_keyword(self, keyword: str) -> list[SearchQuery]:
-        """
-        Build a small set of search queries for one keyword.
-
-        Current strategy:
-        1. Exact phrase query
-        2. Broad web article / guide query
-        3. Domain concept query
-        """
         keyword = keyword.strip()
         if not keyword:
             return []
 
         queries: list[SearchQuery] = []
+        seen: set[str] = set()
 
-        # Highest precision.
-        queries.append(
-            SearchQuery(
-                keyword=keyword,
-                query=f'"{keyword}"',
-                strategy="exact_phrase",
+        def add(query: str, strategy: str) -> None:
+            normalized = query.strip()
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            queries.append(
+                SearchQuery(
+                    keyword=keyword,
+                    query=normalized,
+                    strategy=strategy,
+                )
             )
-        )
 
-        # Good for pages that explain or discuss the concept.
-        queries.append(
-            SearchQuery(
-                keyword=keyword,
-                query=f'{keyword} guide overview best practices',
-                strategy="article_focused",
-            )
-        )
+        tokens = keyword.split()
+        is_healthcare = any(token in _HEALTHCARE_HINTS for token in tokens)
 
-        # Better for domain and implementation-oriented material.
-        queries.append(
-            SearchQuery(
-                keyword=keyword,
-                query=f'{keyword} workflow system process requirements',
-                strategy="broad_domain",
+        # Keep exact phrase for precision.
+        add(f'"{keyword}"', "exact_phrase")
+
+        # Stronger domain query instead of generic "guide overview best practices".
+        if is_healthcare:
+            add(
+                f'{keyword} healthcare clinic software workflow',
+                "healthcare_domain",
             )
-        )
+            add(
+                f'{keyword} ehr scheduling system',
+                "ehr_domain",
+            )
+        else:
+            add(
+                f'{keyword} software workflow system',
+                "domain_context",
+            )
+
+        # Add a process-oriented query only when the keyword already looks operational.
+        if any(token.endswith("ing") for token in tokens) or "schedule" in tokens or "appointments" in tokens:
+            if is_healthcare:
+                add(
+                    f'{keyword} patient scheduling workflow clinic',
+                    "process_context",
+                )
+            else:
+                add(
+                    f'{keyword} workflow process',
+                    "process_context",
+                )
 
         return queries
 
     def build_queries(self, keywords: list[str]) -> list[SearchQuery]:
-        """
-        Build queries for all keywords and flatten them into one list.
-        """
         all_queries: list[SearchQuery] = []
         seen: set[tuple[str, str]] = set()
 

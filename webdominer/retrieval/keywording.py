@@ -103,8 +103,8 @@ _RS_FILLER_WORDS = {
     "pages",
     "screen",
     "screens",
+    "workflow",
 }
-
 
 _GENERIC_BAD_SINGLE_WORDS = {
     "system",
@@ -134,8 +134,8 @@ _GENERIC_BAD_SINGLE_WORDS = {
     "update",
     "delete",
     "view",
+    "workflow",
 }
-
 
 _STOPWORDS = {
     "a",
@@ -181,6 +181,21 @@ _STOPWORDS = {
     "not",
 }
 
+_DOCUMENT_NOISE_WORDS = {
+    "requirement",
+    "requirements",
+    "specification",
+    "specifications",
+    "document",
+    "documents",
+    "proposal",
+    "overview",
+    "introduction",
+    "project",
+    "projects",
+    "solution",
+    "clinicflow",
+}
 
 _DOMAIN_NOUN_HINTS = {
     "appointment",
@@ -227,17 +242,58 @@ _DOMAIN_NOUN_HINTS = {
     "sensor",
     "telemetry",
     "maintenance",
+    "availability",
+    "calendar",
+    "room",
+    "rooms",
+    "staff",
+    "billing",
+    "insurance",
+    "ehr",
+    "emr",
+    "reminder",
+    "reminders",
+    "checkin",
+    "checkout",
+    "waitlist",
+    "visit",
+    "visits",
+}
+
+_ACTION_WORDS = {
+    "schedule",
+    "scheduling",
+    "reschedule",
+    "rescheduling",
+    "book",
+    "booking",
+    "cancel",
+    "cancellation",
+    "confirm",
+    "confirmation",
+    "track",
+    "tracking",
+    "manage",
+    "managing",
+    "optimize",
+    "optimization",
+    "forecast",
+    "forecasting",
+}
+
+_WEAK_CONTEXT_WORDS = {
+    "priority",
+    "utilization",
+    "room",
+    "rooms",
+    "availability",
+    "hours",
 }
 
 
 class KeywordExtractor:
     """
     Extract and clean domain-oriented keyword phrases from an RS document.
-
-    This class intentionally does more than raw KeyBERT extraction:
-    - normalizes noisy requirement-language phrases
-    - rejects generic or low-value candidates
-    - prefers noun-like multi-word domain phrases
     """
 
     def __init__(
@@ -249,12 +305,6 @@ class KeywordExtractor:
     def extract_keywords(self, text: str, top_n: int = 20) -> list[KeywordCandidate]:
         """
         Extract cleaned keyword candidates from the RS text.
-
-        Strategy:
-        1. Use KeyBERT to get an over-complete candidate set.
-        2. Normalize and aggressively filter weak phrases.
-        3. Deduplicate while preserving highest-quality ordering.
-        4. If results are too sparse, augment with a fallback phrase extractor.
         """
         raw_candidates = self.model.extract_keywords(
             text,
@@ -319,16 +369,10 @@ def normalize_phrase(phrase: str) -> str:
     Normalize a raw extracted phrase into a clean lowercase keyword phrase.
     """
     phrase = phrase.lower().strip()
-
-    # Replace separators with spaces.
     phrase = phrase.replace("/", " ")
     phrase = phrase.replace("_", " ")
     phrase = phrase.replace("-", " ")
-
-    # Remove punctuation except alphanumerics and spaces.
     phrase = re.sub(r"[^a-z0-9\s]", " ", phrase)
-
-    # Collapse whitespace.
     phrase = re.sub(r"\s+", " ", phrase).strip()
 
     if not phrase:
@@ -336,7 +380,6 @@ def normalize_phrase(phrase: str) -> str:
 
     tokens = phrase.split()
 
-    # Remove leading/trailing filler/stop words.
     while tokens and tokens[0] in _RS_FILLER_WORDS.union(_STOPWORDS):
         tokens.pop(0)
     while tokens and tokens[-1] in _RS_FILLER_WORDS.union(_STOPWORDS):
@@ -345,70 +388,110 @@ def normalize_phrase(phrase: str) -> str:
     if not tokens:
         return ""
 
-    # Remove repeated adjacent words.
     deduped_tokens: list[str] = []
     for token in tokens:
         if not deduped_tokens or deduped_tokens[-1] != token:
             deduped_tokens.append(token)
 
-    return " ".join(deduped_tokens)
+    tokens = deduped_tokens
+
+    if not tokens:
+        return ""
+
+    noise_count = sum(token in _DOCUMENT_NOISE_WORDS for token in tokens)
+    if noise_count >= 2:
+        return ""
+
+    return " ".join(tokens)
 
 
 def is_strong_keyword_candidate(phrase: str) -> bool:
     """
     Decide whether a phrase is strong enough to use for search discovery.
-
-    Accept only phrases that are likely to be domain-bearing and search-worthy.
     """
     tokens = phrase.split()
     token_count = len(tokens)
 
-    if token_count == 0:
+    if token_count == 0 or token_count > 4:
         return False
 
-    if token_count > 4:
+    noise_count = sum(token in _DOCUMENT_NOISE_WORDS for token in tokens)
+    if noise_count >= 2:
         return False
 
-    # Reject purely generic one-word phrases.
     if token_count == 1 and tokens[0] in _GENERIC_BAD_SINGLE_WORDS:
         return False
 
-    # Reject one-word phrases that are too short or too vague.
     if token_count == 1:
         token = tokens[0]
         if len(token) < 4:
             return False
-        if token in _RS_FILLER_WORDS or token in _STOPWORDS:
+        if token in _RS_FILLER_WORDS or token in _STOPWORDS or token in _DOCUMENT_NOISE_WORDS:
             return False
         if token.endswith("ing") and token not in _DOMAIN_NOUN_HINTS:
             return False
         return token in _DOMAIN_NOUN_HINTS
 
-    # Reject phrases made mostly of filler/generic tokens.
     meaningful_tokens = [
         token
         for token in tokens
-        if token not in _RS_FILLER_WORDS and token not in _STOPWORDS
+        if token not in _RS_FILLER_WORDS
+        and token not in _STOPWORDS
+        and token not in _DOCUMENT_NOISE_WORDS
     ]
 
     if len(meaningful_tokens) < 2:
         return False
 
-    # Reject phrases that still contain too much requirement-language noise.
     filler_ratio = 1.0 - (len(meaningful_tokens) / len(tokens))
     if filler_ratio > 0.4:
         return False
 
-    # Prefer phrases with at least one domain hint.
-    has_domain_hint = any(token in _DOMAIN_NOUN_HINTS for token in meaningful_tokens)
+    domain_tokens = [token for token in meaningful_tokens if token in _DOMAIN_NOUN_HINTS]
+    action_tokens = [token for token in meaningful_tokens if token in _ACTION_WORDS]
 
-    # Strong 2-word and 3-word phrases are preferred.
-    if token_count in (2, 3):
-        return has_domain_hint or all(len(token) >= 4 for token in meaningful_tokens)
+    if len(domain_tokens) == 0:
+        return False
 
-    # 4-word phrases must be very strong.
+    # Reject awkward 3-token patterns that are likely extraction artifacts.
+    if token_count == 3:
+        # domain-action-domain like "appointment track patient"
+        if len(domain_tokens) >= 2 and len(action_tokens) == 1:
+            action_position = next(
+                (idx for idx, token in enumerate(tokens) if token in _ACTION_WORDS),
+                -1,
+            )
+            if action_position == 1:
+                return False
+
+        # domain-weak-domain like "appointment priority clinic"
+        if (
+            tokens[0] in _DOMAIN_NOUN_HINTS
+            and tokens[1] in _WEAK_CONTEXT_WORDS
+            and tokens[2] in _DOMAIN_NOUN_HINTS
+        ):
+            return False
+
+        # domain-weak-weak like "doctor utilization room"
+        if (
+            tokens[0] in _DOMAIN_NOUN_HINTS
+            and tokens[1] in _WEAK_CONTEXT_WORDS
+            and tokens[2] in _WEAK_CONTEXT_WORDS
+        ):
+            return False
+
+    # Prefer phrases with clearer semantics:
+    # - domain + domain
+    # - action + domain
+    # - domain + action
+    if token_count == 2:
+        return True
+
+    if token_count == 3:
+        return True
+
     if token_count == 4:
-        return has_domain_hint and len(meaningful_tokens) >= 3
+        return len(domain_tokens) >= 2
 
     return False
 
@@ -416,8 +499,6 @@ def is_strong_keyword_candidate(phrase: str) -> bool:
 def extract_fallback_phrases(text: str) -> list[str]:
     """
     Lightweight fallback phrase extraction from the RS text.
-
-    This is used only if KeyBERT returns too few strong phrases.
     """
     normalized_text = text.lower()
     normalized_text = re.sub(r"[^a-z0-9\s]", " ", normalized_text)
@@ -426,14 +507,12 @@ def extract_fallback_phrases(text: str) -> list[str]:
     tokens = normalized_text.split()
     phrases: list[str] = []
 
-    # Collect adjacent bi-grams and tri-grams.
     for n in (2, 3):
         for i in range(len(tokens) - n + 1):
             phrase = " ".join(tokens[i : i + n])
             if is_strong_keyword_candidate(normalize_phrase(phrase)):
                 phrases.append(phrase)
 
-    # Stable deduplication.
     unique_phrases = list(OrderedDict.fromkeys(phrases))
     return unique_phrases[:50]
 
@@ -447,11 +526,13 @@ def rank_keyword_candidates(
     return sorted(
         candidates,
         key=lambda c: (
-            c.source != "keybert",  # Prefer KeyBERT over fallback
-            c.token_count == 1,  # Penalize single-word phrases
-            -min(c.token_count, 3),  # Prefer 2-3 word phrases
+            c.source != "keybert",
+            c.token_count == 1,
+            contains_weak_context(c.phrase),
+            -min(c.token_count, 3),
             -contains_domain_hint(c.phrase),
-            -c.score,  # Then use extraction score
+            contains_document_noise(c.phrase),
+            -c.score,
             c.phrase,
         ),
     )
@@ -460,6 +541,16 @@ def rank_keyword_candidates(
 def contains_domain_hint(phrase: str) -> int:
     """Return 1 if the phrase contains at least one domain noun hint, else 0."""
     return int(any(token in _DOMAIN_NOUN_HINTS for token in phrase.split()))
+
+
+def contains_document_noise(phrase: str) -> int:
+    """Return the number of document-noise words in the phrase."""
+    return sum(token in _DOCUMENT_NOISE_WORDS for token in phrase.split())
+
+
+def contains_weak_context(phrase: str) -> int:
+    """Return the number of weak-context words in the phrase."""
+    return sum(token in _WEAK_CONTEXT_WORDS for token in phrase.split())
 
 
 def count_tokens(phrase: str) -> int:

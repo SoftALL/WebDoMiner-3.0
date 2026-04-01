@@ -11,10 +11,62 @@ from webdominer.retrieval.discovery import UrlDiscoveryService
 from webdominer.retrieval.keywording import KeywordExtractor
 from webdominer.retrieval.query_builder import QueryBuilder
 from webdominer.retrieval.search_clients import create_search_client
+from webdominer.retrieval.url_filters import normalize_url
 from webdominer.scraping.scraper import ScraperService
 from webdominer.semantic.embeddings import EmbeddingService
 from webdominer.semantic.similarity import SemanticFilterService
 from webdominer.settings import Settings
+
+
+def deduplicate_rejected_pages(rejected_pages: list[RejectedPage]) -> list[RejectedPage]:
+    """
+    Deduplicate rejected pages by normalized URL, keeping the most informative one.
+    """
+    deduped: dict[str, RejectedPage] = {}
+
+    for page in rejected_pages:
+        normalized_url = normalize_url(page.url) if page.url else page.url
+        existing = deduped.get(normalized_url)
+
+        if existing is None:
+            deduped[normalized_url] = page
+            continue
+
+        existing_has_similarity = existing.similarity_score is not None
+        new_has_similarity = page.similarity_score is not None
+
+        if new_has_similarity and not existing_has_similarity:
+            deduped[normalized_url] = page
+            continue
+
+        if (
+            new_has_similarity
+            and existing_has_similarity
+            and page.similarity_score is not None
+            and existing.similarity_score is not None
+            and page.similarity_score > existing.similarity_score
+        ):
+            deduped[normalized_url] = page
+            continue
+
+        if len(page.reason) > len(existing.reason):
+            deduped[normalized_url] = page
+
+    return sorted(deduped.values(), key=lambda item: item.url)
+
+
+def deduplicate_failed_pages(failed_pages: list[FailedPage]) -> list[FailedPage]:
+    """
+    Deduplicate failed pages by normalized URL, keeping the first useful record.
+    """
+    deduped: dict[str, FailedPage] = {}
+
+    for page in failed_pages:
+        key = normalize_url(page.url) if page.url else f"search::{page.query}"
+        if key not in deduped:
+            deduped[key] = page
+
+    return sorted(deduped.values(), key=lambda item: (item.url, item.query, item.error))
 
 
 class WebDoMinerPipeline:
@@ -120,11 +172,6 @@ class WebDoMinerPipeline:
         accepted_documents = semantic_result.accepted_documents
         semantic_rejections = semantic_result.rejected_pages
 
-        summary.final_accepted_documents = len(accepted_documents)
-        summary.pages_rejected = len(scraping_rejections) + len(semantic_rejections)
-        summary.pages_failed = len(discovery_failures) + len(scraping_failures)
-        summary.mark_finished()
-
         all_rejected_pages: list[RejectedPage] = [
             *scraping_rejections,
             *semantic_rejections,
@@ -133,6 +180,14 @@ class WebDoMinerPipeline:
             *discovery_failures,
             *scraping_failures,
         ]
+
+        all_rejected_pages = deduplicate_rejected_pages(all_rejected_pages)
+        all_failed_pages = deduplicate_failed_pages(all_failed_pages)
+
+        summary.final_accepted_documents = len(accepted_documents)
+        summary.pages_rejected = len(all_rejected_pages)
+        summary.pages_failed = len(all_failed_pages)
+        summary.mark_finished()
 
         self.logger.info("Writing output files.")
         accepted_count = write_jsonl(accepted_documents, accepted_path)

@@ -12,6 +12,20 @@ TRACKING_QUERY_PREFIXES = (
     "mc_eid",
 )
 
+LOW_VALUE_DOMAINS = {
+    "zhihu.com",
+    "www.zhihu.com",
+    "zhidao.baidu.com",
+    "stackoverflow.com",
+    "superuser.com",
+    "serverfault.com",
+    "english.stackexchange.com",
+    "ell.stackexchange.com",
+    "quora.com",
+    "www.quora.com",
+    "ask.com",
+}
+
 
 def normalize_url(url: str) -> str:
     """
@@ -53,6 +67,15 @@ def normalize_url(url: str) -> str:
     return normalized
 
 
+def is_low_value_domain(url: str) -> bool:
+    """
+    Return True if the URL belongs to a domain that is usually low-value for
+    domain corpus generation from RS documents.
+    """
+    netloc = urlparse(url).netloc.lower()
+    return netloc in LOW_VALUE_DOMAINS
+
+
 def is_probably_html_url(
     url: str,
     allowed_schemes: tuple[str, ...],
@@ -80,6 +103,9 @@ def is_probably_html_url(
         return False
 
     if any(pattern in lowered_url for pattern in bad_url_patterns):
+        return False
+
+    if is_low_value_domain(url):
         return False
 
     return True
