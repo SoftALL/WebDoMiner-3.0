@@ -1,0 +1,54 @@
+{
+  "summary": {
+    "keywords_extracted": 10,
+    "raw_search_results": 30,
+    "unique_urls_discovered": 19,
+    "pages_scraped_successfully": 15,
+    "pages_rejected": 6,
+    "pages_failed": 0,
+    "final_accepted_documents": 10,
+    "started_at": "2026-04-01T19:32:20.431396+00:00",
+    "finished_at": "2026-04-01T19:34:30.004051+00:00"
+  },
+  "input_file": "examples/sample_rs_healthcare.txt",
+  "accepted_output_file": "examples/example_corpus.jsonl",
+  "rejected_output_file": "examples/example_rejected.jsonl",
+  "failed_output_file": "examples/example_failed.jsonl",
+  "keywords": [
+    {
+      "phrase": "patient appointments scheduling",
+      "score": 0.6911,
+      "source": "keybert",
+      "token_count": 3
+    },
+    {
+      "phrase": "reschedule patient appointments",
+      "score": 0.6212,
+      "source": "keybert",
+      "token_count": 3
+    },
+    {
+      "phrase": "doctor schedule",
+      "score": 0.6513,
+      "source": "keybert",
+      "token_count": 2
+    },
+    {
+      "phrase": "patient appointments",
+      "score": 0.644,
+      "source": "keybert",
+      "token_count": 2
+    },
+    {
+      "phrase": "appointment scheduling",
+      "score": 0.6062,
+      "source": "keybert",
+      "token_count": 2
+    }
+  ],
+  "counts_written": {
+    "accepted": 10,
+    "rejected": 6,
+    "failed": 0
+  }
+}

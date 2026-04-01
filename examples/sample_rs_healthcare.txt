@@ -1,0 +1,21 @@
+ClinicFlow is a web-based healthcare appointment and clinic coordination platform intended for small and medium outpatient clinics.
+
+The system shall allow patients to book, reschedule, and cancel appointments online. Patients shall be able to view available dates and times based on doctor schedules, clinic operating hours, and appointment type. The system shall prevent double booking of doctors, rooms, and critical equipment.
+
+The system shall support doctor schedule management. Clinic staff shall be able to define doctor availability, shift timing, break periods, leave dates, and temporary exceptions. The system shall also support room assignment for appointments that require special consultation rooms or treatment rooms.
+
+The system shall allow the clinic to define appointment categories such as general consultation, follow-up visit, urgent consultation, lab review, and vaccination. Each appointment category may have a different expected duration and preparation requirement.
+
+The system shall support automated appointment reminders through email and SMS. Reminder timing should be configurable by clinic staff. The system shall also record whether reminders were sent successfully.
+
+The system shall support patient registration and profile management. A patient profile shall include basic personal information, contact information, insurance details, and visit history. The system shall support search and retrieval of patient records by authorized staff.
+
+The system shall support check-in and check-out workflows. Front desk staff shall be able to mark when a patient arrives, when the consultation starts, and when the consultation ends. The system shall support waiting queue visibility for staff.
+
+The system shall support billing-related integration points. Authorized staff shall be able to view payment status, insurance approval status, and outstanding balances before confirming certain appointments.
+
+The system shall provide dashboards and reports related to appointment utilization, no-show rate, average waiting time, doctor utilization, and room utilization. Clinic administrators shall be able to identify peak hours and adjust scheduling policies accordingly.
+
+The system shall enforce role-based access control for patients, doctors, reception staff, billing staff, and administrators. Sensitive patient information shall only be visible to authorized roles.
+
+The system shall maintain audit logs for important actions such as appointment creation, appointment cancellation, schedule modification, and patient record updates.
