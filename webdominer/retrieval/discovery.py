@@ -3,10 +3,15 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from webdominer.models import DiscoveredUrl, SearchResult
+from webdominer.logging_utils import get_logger
+from webdominer.models import DiscoveredUrl, FailedPage, SearchResult
 from webdominer.retrieval.query_builder import SearchQuery
 from webdominer.retrieval.search_clients import BaseSearchClient
-from webdominer.retrieval.url_filters import get_url_domain, is_probably_html_url, normalize_url
+from webdominer.retrieval.url_filters import (
+    get_url_domain,
+    is_probably_html_url,
+    normalize_url,
+)
 from webdominer.settings import Settings
 
 
@@ -35,9 +40,6 @@ def compute_text_overlap_score(keyword: str, title: str, snippet: str, query: st
     """
     Cheap lexical relevance score using overlap between keyword/query tokens
     and search-result title/snippet tokens.
-
-    This is intentionally lightweight and fast. It acts as a pre-ranking step
-    before scraping, not as a final semantic judge.
     """
     keyword_tokens = set(tokenize_for_matching(keyword))
     query_tokens = set(tokenize_for_matching(query))
@@ -85,22 +87,46 @@ class UrlDiscoveryService:
     def __init__(self, settings: Settings, search_client: BaseSearchClient) -> None:
         self.settings = settings
         self.search_client = search_client
+        self.logger = get_logger(__name__)
 
-    def run_searches(self, queries: list[SearchQuery]) -> list[SearchResult]:
+    def run_searches(
+        self,
+        queries: list[SearchQuery],
+    ) -> tuple[list[SearchResult], list[FailedPage]]:
         """
         Execute all query searches and collect raw results.
+
+        Search failures are captured and returned instead of aborting the whole stage.
         """
         all_results: list[SearchResult] = []
+        failed_searches: list[FailedPage] = []
 
         for item in queries:
-            results = self.search_client.search(
-                keyword=item.keyword,
-                query=item.query,
-                max_results=self.settings.top_urls_per_keyword,
-            )
-            all_results.extend(results)
+            try:
+                results = self.search_client.search(
+                    keyword=item.keyword,
+                    query=item.query,
+                    max_results=self.settings.top_urls_per_keyword,
+                )
+                all_results.extend(results)
+            except Exception as exc:
+                self.logger.warning(
+                    "Search failed for query %r (keyword=%r): %s",
+                    item.query,
+                    item.keyword,
+                    exc,
+                )
+                failed_searches.append(
+                    FailedPage(
+                        url="",
+                        error=f"search_failure:{type(exc).__name__}: {exc}",
+                        matched_keyword=item.keyword,
+                        query=item.query,
+                        title="",
+                    )
+                )
 
-        return all_results
+        return all_results, failed_searches
 
     def discover_urls(self, raw_results: list[SearchResult]) -> list[DiscoveredUrl]:
         """
@@ -165,7 +191,10 @@ class UrlDiscoveryService:
                 )
             )
 
-            for index_within_domain, (normalized_url, result) in enumerate(domain_items, start=1):
+            for index_within_domain, (normalized_url, result) in enumerate(
+                domain_items,
+                start=1,
+            ):
                 overlap_score = compute_text_overlap_score(
                     keyword=result.keyword,
                     title=result.title,
@@ -174,7 +203,6 @@ class UrlDiscoveryService:
                 )
                 rank_bonus = compute_rank_bonus(result.rank)
                 diversity_penalty = compute_domain_diversity_penalty(index_within_domain)
-
                 final_score = overlap_score + rank_bonus - diversity_penalty
 
                 discovered.append(
@@ -191,19 +219,19 @@ class UrlDiscoveryService:
                 )
 
         discovered.sort(
-            key=lambda item: (
-                -item.discovery_score,
-                item.search_rank,
-                item.url,
-            )
+            key=lambda item: (-item.discovery_score, item.search_rank, item.url)
         )
 
         return discovered
 
-    def search_and_discover(self, queries: list[SearchQuery]) -> tuple[list[SearchResult], list[DiscoveredUrl]]:
+    def search_and_discover(
+        self,
+        queries: list[SearchQuery],
+    ) -> tuple[list[SearchResult], list[DiscoveredUrl], list[FailedPage]]:
         """
-        Convenience method that runs the full discovery stage.
+        Run the full discovery stage and return raw results, discovered URLs,
+        and captured search failures.
         """
-        raw_results = self.run_searches(queries)
+        raw_results, failed_searches = self.run_searches(queries)
         discovered = self.discover_urls(raw_results)
-        return raw_results, discovered
+        return raw_results, discovered, failed_searches

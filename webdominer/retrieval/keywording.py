@@ -240,7 +240,10 @@ class KeywordExtractor:
     - prefers noun-like multi-word domain phrases
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+    def __init__(
+        self,
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+    ) -> None:
         self.model = KeyBERT(model=model_name)
 
     def extract_keywords(self, text: str, top_n: int = 20) -> list[KeywordCandidate]:
@@ -444,11 +447,11 @@ def rank_keyword_candidates(
     return sorted(
         candidates,
         key=lambda c: (
-            c.source != "keybert",        # Prefer KeyBERT over fallback
-            c.token_count == 1,           # Penalize single-word phrases
-            -min(c.token_count, 3),       # Prefer 2-3 word phrases
+            c.source != "keybert",  # Prefer KeyBERT over fallback
+            c.token_count == 1,  # Penalize single-word phrases
+            -min(c.token_count, 3),  # Prefer 2-3 word phrases
             -contains_domain_hint(c.phrase),
-            -c.score,                     # Then use extraction score
+            -c.score,  # Then use extraction score
             c.phrase,
         ),
     )

@@ -12,6 +12,7 @@ from .models import (
     DiscoveredUrl,
     ScrapedPage,
     RejectedPage,
+    FailedPage,
     PipelineSummary,
 )
 
@@ -22,6 +23,7 @@ __all__ = [
     "DiscoveredUrl",
     "ScrapedPage",
     "RejectedPage",
+    "FailedPage",
     "PipelineSummary",
 ]
 
