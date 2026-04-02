@@ -15,16 +15,16 @@ class DummySearchClient:
 
 def test_compute_text_overlap_score_rewards_keyword_match() -> None:
     strong_score = compute_text_overlap_score(
-        keyword="patient appointments scheduling",
-        title="Patient appointments scheduling workflow in healthcare",
-        snippet="This article explains patient scheduling and clinic workflows.",
-        query='"patient appointments scheduling"',
+        keyword="appointment scheduling",
+        title="Appointment scheduling workflow for service teams",
+        snippet="This article explains appointment scheduling and calendar workflows.",
+        query='"appointment scheduling"',
     )
     weak_score = compute_text_overlap_score(
-        keyword="patient appointments scheduling",
+        keyword="appointment scheduling",
         title="Random article about gardening",
         snippet="Plants, watering, and soil.",
-        query='"patient appointments scheduling"',
+        query='"appointment scheduling"',
     )
 
     assert strong_score > weak_score
@@ -47,19 +47,19 @@ def test_discover_urls_deduplicates_same_normalized_url() -> None:
 
     raw_results = [
         SearchResult(
-            keyword="patient appointments scheduling",
-            query='"patient appointments scheduling"',
-            title="Patient scheduling workflow",
-            snippet="A useful article on patient scheduling workflow.",
+            keyword="appointment scheduling",
+            query='"appointment scheduling"',
+            title="Appointment scheduling workflow",
+            snippet="A useful article on appointment scheduling workflow.",
             url="https://example.com/article?utm_source=google",
             rank=2,
             source="ddg",
         ),
         SearchResult(
-            keyword="patient appointments scheduling",
-            query="patient appointments scheduling healthcare clinic software workflow",
-            title="Patient scheduling workflow in clinics",
-            snippet="An even better article on patient appointments scheduling.",
+            keyword="appointment scheduling",
+            query="appointment scheduling calendar service",
+            title="Appointment scheduling workflow guide",
+            snippet="An even better article on appointment scheduling.",
             url="https://example.com/article",
             rank=1,
             source="ddg",
@@ -78,8 +78,8 @@ def test_discover_urls_filters_low_value_domain() -> None:
 
     raw_results = [
         SearchResult(
-            keyword="patient appointments scheduling",
-            query='"patient appointments scheduling"',
+            keyword="appointment scheduling",
+            query='"appointment scheduling"',
             title="Zhihu result",
             snippet="Noise result",
             url="https://www.zhihu.com/question/123",
@@ -87,11 +87,11 @@ def test_discover_urls_filters_low_value_domain() -> None:
             source="ddg",
         ),
         SearchResult(
-            keyword="patient appointments scheduling",
-            query='"patient appointments scheduling"',
-            title="Useful healthcare article",
-            snippet="Strong patient scheduling article",
-            url="https://example.com/healthcare-workflow",
+            keyword="appointment scheduling",
+            query='"appointment scheduling"',
+            title="Useful scheduling article",
+            snippet="Strong appointment scheduling article",
+            url="https://example.com/scheduling-workflow",
             rank=2,
             source="ddg",
         ),
@@ -100,7 +100,7 @@ def test_discover_urls_filters_low_value_domain() -> None:
     discovered = service.discover_urls(raw_results)
 
     assert len(discovered) == 1
-    assert discovered[0].url == "https://example.com/healthcare-workflow"
+    assert discovered[0].url == "https://example.com/scheduling-workflow"
 
 
 def test_discover_urls_prefers_better_scored_duplicate() -> None:
@@ -109,20 +109,20 @@ def test_discover_urls_prefers_better_scored_duplicate() -> None:
 
     raw_results = [
         SearchResult(
-            keyword="doctor schedule",
-            query='"doctor schedule"',
+            keyword="route planning",
+            query='"route planning"',
             title="Weak result",
             snippet="Short generic snippet.",
-            url="https://example.com/schedule",
+            url="https://example.com/planning",
             rank=5,
             source="ddg",
         ),
         SearchResult(
-            keyword="doctor schedule",
-            query="doctor schedule healthcare clinic software workflow",
-            title="Doctor schedule workflow for clinics",
-            snippet="Detailed clinic scheduling and physician calendar workflow.",
-            url="https://example.com/schedule",
+            keyword="route planning",
+            query="route planning delivery optimization",
+            title="Route planning workflow for delivery operations",
+            snippet="Detailed route planning, scheduling, and delivery optimization guide.",
+            url="https://example.com/planning",
             rank=1,
             source="ddg",
         ),
@@ -131,5 +131,5 @@ def test_discover_urls_prefers_better_scored_duplicate() -> None:
     discovered = service.discover_urls(raw_results)
 
     assert len(discovered) == 1
-    assert discovered[0].title == "Doctor schedule workflow for clinics"
+    assert discovered[0].title == "Route planning workflow for delivery operations"
     assert discovered[0].search_rank == 1

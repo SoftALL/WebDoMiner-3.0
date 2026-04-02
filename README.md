@@ -1,6 +1,6 @@
 # WebDoMiner
 
-WebDoMiner generates a domain-specific corpus from the open web using a natural-language Requirements Specification (RS) document. It extracts meaningful domain keywords, discovers relevant public web pages, scrapes and cleans their main text, filters low-value content, and outputs a structured JSONL corpus with full source traceability.
+WebDoMiner generates a domain-specific corpus from the open web using a natural-language Requirements Specification (RS) document. It extracts meaningful keywords from the RS itself, discovers relevant public web pages, scrapes and cleans their main text, filters low-value content, and outputs a structured JSONL corpus with full source traceability.
 
 ## Table of Contents
 
@@ -23,22 +23,27 @@ WebDoMiner generates a domain-specific corpus from the open web using a natural-
   - [Rejected Pages](#rejected-pages)
   - [Failed Pages](#failed-pages)
   - [Summary File](#summary-file)
-- [Example](#example)
+- [Examples](#examples)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [License](#license)
 
 ## Overview
 
-WebDoMiner is designed for cases where a requirements document describes a domain, but a supporting external corpus is still needed. Instead of relying on paid APIs or closed services, the project uses fully local or free tools to:
+WebDoMiner is designed for situations where a requirements document describes a system, workflow, or operational domain, but a supporting external corpus is still needed.
+
+Instead of relying on paid APIs or closed services, the project uses fully local or free tools to:
 
 - extract domain-oriented keywords from an RS document
+- build search queries from those RS-derived keywords
 - search the open web for potentially relevant pages
 - remove low-value or boilerplate-heavy content
 - measure semantic similarity between the RS and scraped pages
 - produce a traceable corpus ready for downstream use
 
-The project is especially useful for building input corpora for requirements engineering, domain understanding, retrieval pipelines, and related NLP workflows.
+A key design goal of WebDoMiner is that the **RS document defines the domain**. The system is not limited to healthcare or any other fixed field. A healthcare RS, logistics RS, education RS, or another domain-specific RS should all drive different keyword extraction and discovery behavior from the same pipeline.
+
+The project is useful for requirements engineering, domain understanding, retrieval pipelines, corpus bootstrapping, and related NLP workflows.
 
 ## How It Works
 
@@ -46,11 +51,16 @@ The project is especially useful for building input corpora for requirements eng
 
 WebDoMiner reads a `.txt` or `.docx` requirements document and extracts candidate keywords and keyphrases using KeyBERT. The extracted phrases are then cleaned and filtered to remove weak, generic, or document-title-style phrases.
 
-This stage is designed to prefer search-worthy, domain-oriented phrases over noisy requirement-language fragments.
+This stage is designed to prefer search-worthy, domain-oriented phrases over noisy requirement-language fragments, while staying domain-neutral and driven by the RS content itself.
 
 ### 2. URL Discovery
 
 The cleaned keywords are transformed into search queries and sent to a free search backend such as DuckDuckGo or a self-hosted SearxNG instance.
+
+The query-building stage is RS-driven and domain-neutral:
+- it starts from extracted keyword phrases
+- it adds lightweight generic query patterns
+- it uses RS-derived context terms rather than fixed domain templates
 
 Discovered URLs are then:
 - normalized for stable deduplication
@@ -77,6 +87,8 @@ After scraping, WebDoMiner embeds:
 - each cleaned web page
 
 It then computes cosine similarity using a local SentenceTransformer model. Pages below the configured similarity threshold are rejected, while stronger matches are accepted into the final corpus.
+
+This semantic filtering stage helps keep the final corpus aligned with the input RS even when search results are broad, noisy, or partially off-topic.
 
 ### 5. Structured Output
 
@@ -283,17 +295,19 @@ Provides a structured overview of the run, including:
 - failed pages
 - final accepted documents
 
-## Example
+## Examples
 
-The `examples/` folder contains:
+The `examples/` folder contains a sample input RS file and example output files that illustrate the expected input style and the structure of the produced results.
 
-- `sample_rs_healthcare.txt`
-- `example_summary.json`
-- `example_corpus.jsonl`
-- `example_rejected.jsonl`
-- `example_failed.jsonl`
+Included files demonstrate:
 
-These files show both the expected input style and the structure of the produced outputs.
+-   a sample requirements document used as pipeline input
+-   a summary of a completed run
+-   accepted corpus output in JSONL format
+-   rejected pages output
+-   failed pages output
+
+The current example set uses a logistics RS to show that WebDoMiner is not limited to healthcare or any other fixed domain. The pipeline is designed to be domain-neutral and driven by the RS document itself, so different RS documents should lead to different keyword extraction, search queries, and discovered content.
 
 ## Testing
 

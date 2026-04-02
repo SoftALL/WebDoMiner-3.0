@@ -197,69 +197,6 @@ _DOCUMENT_NOISE_WORDS = {
     "clinicflow",
 }
 
-_DOMAIN_NOUN_HINTS = {
-    "appointment",
-    "appointments",
-    "patient",
-    "patients",
-    "doctor",
-    "doctors",
-    "hospital",
-    "clinic",
-    "medical",
-    "medication",
-    "prescription",
-    "diagnosis",
-    "schedule",
-    "schedules",
-    "inventory",
-    "resource",
-    "resources",
-    "booking",
-    "payment",
-    "invoice",
-    "shipment",
-    "delivery",
-    "route",
-    "vehicle",
-    "fleet",
-    "warehouse",
-    "driver",
-    "demand",
-    "forecast",
-    "optimization",
-    "attendance",
-    "student",
-    "teacher",
-    "course",
-    "enrollment",
-    "security",
-    "authentication",
-    "authorization",
-    "audit",
-    "logistics",
-    "tracking",
-    "sensor",
-    "telemetry",
-    "maintenance",
-    "availability",
-    "calendar",
-    "room",
-    "rooms",
-    "staff",
-    "billing",
-    "insurance",
-    "ehr",
-    "emr",
-    "reminder",
-    "reminders",
-    "checkin",
-    "checkout",
-    "waitlist",
-    "visit",
-    "visits",
-}
-
 _ACTION_WORDS = {
     "schedule",
     "scheduling",
@@ -279,15 +216,36 @@ _ACTION_WORDS = {
     "optimization",
     "forecast",
     "forecasting",
+    "assign",
+    "assignment",
+    "dispatch",
+    "dispatching",
+    "monitor",
+    "monitoring",
+    "audit",
+    "auditing",
+    "report",
+    "reporting",
+    "notify",
+    "notification",
+    "notifications",
+    "bill",
+    "billing",
+    "pay",
+    "payment",
 }
 
 _WEAK_CONTEXT_WORDS = {
     "priority",
     "utilization",
-    "room",
-    "rooms",
     "availability",
     "hours",
+    "status",
+    "details",
+    "type",
+    "types",
+    "level",
+    "levels",
 }
 
 
@@ -408,6 +366,11 @@ def normalize_phrase(phrase: str) -> str:
 def is_strong_keyword_candidate(phrase: str) -> bool:
     """
     Decide whether a phrase is strong enough to use for search discovery.
+
+    Domain-neutral version:
+    - rejects noisy RS filler phrases
+    - prefers 2-3 token phrases
+    - avoids dependence on a fixed domain noun list
     """
     tokens = phrase.split()
     token_count = len(tokens)
@@ -419,18 +382,18 @@ def is_strong_keyword_candidate(phrase: str) -> bool:
     if noise_count >= 2:
         return False
 
-    if token_count == 1 and tokens[0] in _GENERIC_BAD_SINGLE_WORDS:
-        return False
-
+    # Avoid single-word keywords; they are usually too broad for web discovery.
     if token_count == 1:
         token = tokens[0]
+        if token in _GENERIC_BAD_SINGLE_WORDS:
+            return False
         if len(token) < 4:
             return False
         if token in _RS_FILLER_WORDS or token in _STOPWORDS or token in _DOCUMENT_NOISE_WORDS:
             return False
-        if token.endswith("ing") and token not in _DOMAIN_NOUN_HINTS:
+        if token.endswith("ing"):
             return False
-        return token in _DOMAIN_NOUN_HINTS
+        return True
 
     meaningful_tokens = [
         token
@@ -447,51 +410,37 @@ def is_strong_keyword_candidate(phrase: str) -> bool:
     if filler_ratio > 0.4:
         return False
 
-    domain_tokens = [token for token in meaningful_tokens if token in _DOMAIN_NOUN_HINTS]
-    action_tokens = [token for token in meaningful_tokens if token in _ACTION_WORDS]
+    weak_count = sum(token in _WEAK_CONTEXT_WORDS for token in meaningful_tokens)
+    action_count = sum(token in _ACTION_WORDS for token in meaningful_tokens)
 
-    if len(domain_tokens) == 0:
+    if weak_count >= 2:
         return False
 
-    # Reject awkward 3-token patterns that are likely extraction artifacts.
-    if token_count == 3:
-        # domain-action-domain like "appointment track patient"
-        if len(domain_tokens) >= 2 and len(action_tokens) == 1:
-            action_position = next(
-                (idx for idx, token in enumerate(tokens) if token in _ACTION_WORDS),
-                -1,
-            )
-            if action_position == 1:
-                return False
+    # Reject phrases made entirely of vague action/process words.
+    if action_count == len(meaningful_tokens):
+        return False
 
-        # domain-weak-domain like "appointment priority clinic"
-        if (
-            tokens[0] in _DOMAIN_NOUN_HINTS
-            and tokens[1] in _WEAK_CONTEXT_WORDS
-            and tokens[2] in _DOMAIN_NOUN_HINTS
-        ):
-            return False
-
-        # domain-weak-weak like "doctor utilization room"
-        if (
-            tokens[0] in _DOMAIN_NOUN_HINTS
-            and tokens[1] in _WEAK_CONTEXT_WORDS
-            and tokens[2] in _WEAK_CONTEXT_WORDS
-        ):
-            return False
-
-    # Prefer phrases with clearer semantics:
-    # - domain + domain
-    # - action + domain
-    # - domain + action
     if token_count == 2:
         return True
 
     if token_count == 3:
+        # Reject awkward middle-action artifacts like "appointment track patient"
+        if tokens[1] in _ACTION_WORDS:
+            return False
+
+        # Reject weak middle constructions like "appointment priority clinic"
+        if tokens[1] in _WEAK_CONTEXT_WORDS:
+            return False
+
         return True
 
     if token_count == 4:
-        return len(domain_tokens) >= 2
+        non_weak_non_action = [
+            token
+            for token in meaningful_tokens
+            if token not in _WEAK_CONTEXT_WORDS and token not in _ACTION_WORDS
+        ]
+        return len(non_weak_non_action) >= 2
 
     return False
 
@@ -510,8 +459,9 @@ def extract_fallback_phrases(text: str) -> list[str]:
     for n in (2, 3):
         for i in range(len(tokens) - n + 1):
             phrase = " ".join(tokens[i : i + n])
-            if is_strong_keyword_candidate(normalize_phrase(phrase)):
-                phrases.append(phrase)
+            normalized = normalize_phrase(phrase)
+            if normalized and is_strong_keyword_candidate(normalized):
+                phrases.append(normalized)
 
     unique_phrases = list(OrderedDict.fromkeys(phrases))
     return unique_phrases[:50]
@@ -521,7 +471,7 @@ def rank_keyword_candidates(
     candidates: Iterable[KeywordCandidate],
 ) -> list[KeywordCandidate]:
     """
-    Rank candidates with a bias toward strong multi-word domain phrases.
+    Rank candidates with a bias toward strong multi-word phrases.
     """
     return sorted(
         candidates,
@@ -529,18 +479,13 @@ def rank_keyword_candidates(
             c.source != "keybert",
             c.token_count == 1,
             contains_weak_context(c.phrase),
+            contains_action_heaviness(c.phrase),
             -min(c.token_count, 3),
-            -contains_domain_hint(c.phrase),
             contains_document_noise(c.phrase),
             -c.score,
             c.phrase,
         ),
     )
-
-
-def contains_domain_hint(phrase: str) -> int:
-    """Return 1 if the phrase contains at least one domain noun hint, else 0."""
-    return int(any(token in _DOMAIN_NOUN_HINTS for token in phrase.split()))
 
 
 def contains_document_noise(phrase: str) -> int:
@@ -551,6 +496,11 @@ def contains_document_noise(phrase: str) -> int:
 def contains_weak_context(phrase: str) -> int:
     """Return the number of weak-context words in the phrase."""
     return sum(token in _WEAK_CONTEXT_WORDS for token in phrase.split())
+
+
+def contains_action_heaviness(phrase: str) -> int:
+    """Return the number of action words in the phrase."""
+    return sum(token in _ACTION_WORDS for token in phrase.split())
 
 
 def count_tokens(phrase: str) -> int:

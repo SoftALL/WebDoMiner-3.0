@@ -1,46 +1,57 @@
-Examples
-========
+# Examples
 
-This folder contains a minimal example setup for WebDoMiner.
+This folder contains a small example set that demonstrates the expected input and output format of WebDoMiner.
 
-Files
------
+## Files
 
--   `sample_rs_healthcare.txt`\
-    A sample requirements specification document for a healthcare appointment and clinic coordination system.
--   `example_summary.json`\
-    Example summary output produced by a successful WebDoMiner run.
--   `example_corpus.jsonl`\
-    Example accepted output showing validated corpus records.
--   `example_rejected.jsonl`\
-    Example rejected output showing pages that were filtered out during scraping or semantic filtering.
--   `example_failed.jsonl`\
-    Example failed output. In the provided example run, this file is empty because no pages failed.
+- `sample_rs.txt`  
+  A sample Requirements Specification (RS) document used as input to the pipeline.
 
-Purpose
--------
+- `example_summary.json`  
+  A summary of a completed run, including keyword counts, discovered URLs, accepted documents, rejected pages, failed pages, and previewed queries.
 
-These files are intended to help readers understand:
+- `example_corpus.jsonl`  
+  Example accepted output. Each line is one validated web page stored as a JSON object.
 
-1.  what kind of input WebDoMiner expects
-2.  what kind of output WebDoMiner produces
-3.  how the accepted, rejected, and failed outputs are structured
+- `example_rejected.jsonl`  
+  Example rejected output. These pages were processed but excluded because they did not satisfy the configured quality or similarity requirements.
 
-How to Run the Example
-----------------------
+- `example_failed.jsonl`  
+  Example failed output. These pages could not be processed successfully because of HTTP errors, rate limits, or other retrieval issues.
 
-From the project root, run:
+## Purpose
 
-python -m webdominer.cli --input "examples/sample_rs_healthcare.txt"
+These files are included to help readers quickly understand:
 
-This will generate output files in `data/output/` unless you provide custom output paths.
+- what kind of RS input WebDoMiner expects
+- how the pipeline transforms the RS into search queries
+- what accepted, rejected, and failed outputs look like
+- how a completed run is summarized
 
-Notes
------
+## Important Note
 
--   The example input is only a sample requirements specification and is not tied to any real clinic.
--   The example outputs are illustrative and are meant to show the expected structure and style of results.
--   Depending on search engine behavior and web content changes, your actual output may differ from the example files.
--   If Playwright fallback is enabled, make sure Chromium is installed in your environment:
+The sample RS included here is only an example. WebDoMiner is designed to be **domain-neutral** and driven by the RS document itself. That means the same pipeline can be used with requirements documents from different domains, such as healthcare, logistics, education, operations, or other system types.
 
-playwright install chromium
+## Expected Workflow
+
+A typical workflow is:
+
+1. provide an RS document as input
+2. run the CLI
+3. inspect the summary file
+4. inspect the accepted corpus
+5. review rejected and failed pages if you want to debug or tune the run
+
+## Running the Example
+
+From the project root:
+
+```bash
+python -m webdominer.cli --input "examples/sample_rs.txt"
+```
+
+You can also change parameters such as the number of keywords, number of URLs per query, similarity threshold, and minimum word count from the CLI.
+
+## Notes
+
+The example outputs are intended to illustrate structure and workflow. Actual outputs may differ from run to run because web search results, page availability, blocking behavior, and retrieved content can change over time.

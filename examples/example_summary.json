@@ -1,54 +1,86 @@
 {
   "summary": {
     "keywords_extracted": 10,
-    "raw_search_results": 30,
-    "unique_urls_discovered": 19,
-    "pages_scraped_successfully": 15,
-    "pages_rejected": 6,
-    "pages_failed": 0,
-    "final_accepted_documents": 10,
-    "started_at": "2026-04-01T19:32:20.431396+00:00",
-    "finished_at": "2026-04-01T19:34:30.004051+00:00"
+    "raw_search_results": 20,
+    "unique_urls_discovered": 17,
+    "pages_scraped_successfully": 5,
+    "pages_rejected": 2,
+    "pages_failed": 2,
+    "final_accepted_documents": 3,
+    "started_at": "2026-04-02T13:35:42.994587+00:00",
+    "finished_at": "2026-04-02T13:38:12.994916+00:00"
   },
-  "input_file": "examples/sample_rs_healthcare.txt",
+  "input_file": "examples/sample_rs.txt",
   "accepted_output_file": "examples/example_corpus.jsonl",
   "rejected_output_file": "examples/example_rejected.jsonl",
   "failed_output_file": "examples/example_failed.jsonl",
   "keywords": [
     {
-      "phrase": "patient appointments scheduling",
-      "score": 0.6911,
+      "phrase": "vehicle capacity maintenance",
+      "score": 0.5456,
       "source": "keybert",
       "token_count": 3
     },
     {
-      "phrase": "reschedule patient appointments",
-      "score": 0.6212,
+      "phrase": "logistics operations",
+      "score": 0.5483,
+      "source": "keybert",
+      "token_count": 2
+    },
+    {
+      "phrase": "scheduling vehicle",
+      "score": 0.6016,
+      "source": "keybert",
+      "token_count": 2
+    },
+    {
+      "phrase": "scheduling vehicle assignment",
+      "score": 0.5599,
       "source": "keybert",
       "token_count": 3
     },
     {
-      "phrase": "doctor schedule",
-      "score": 0.6513,
+      "phrase": "deliveries driver utilization",
+      "score": 0.6223,
       "source": "keybert",
-      "token_count": 2
+      "token_count": 3
+    }
+  ],
+  "query_preview": [
+    {
+      "keyword": "vehicle capacity maintenance",
+      "query": "\"vehicle capacity maintenance\"",
+      "strategy": "exact_phrase"
     },
     {
-      "phrase": "patient appointments",
-      "score": 0.644,
-      "source": "keybert",
-      "token_count": 2
+      "keyword": "vehicle capacity maintenance",
+      "query": "vehicle capacity maintenance driver operations",
+      "strategy": "rs_context"
     },
     {
-      "phrase": "appointment scheduling",
-      "score": 0.6062,
-      "source": "keybert",
-      "token_count": 2
+      "keyword": "vehicle capacity maintenance",
+      "query": "vehicle capacity maintenance software system",
+      "strategy": "system_context"
+    },
+    {
+      "keyword": "scheduling vehicle",
+      "query": "\"scheduling vehicle\"",
+      "strategy": "exact_phrase"
+    },
+    {
+      "keyword": "scheduling vehicle",
+      "query": "scheduling vehicle driver operations",
+      "strategy": "rs_context"
+    },
+    {
+      "keyword": "scheduling vehicle",
+      "query": "scheduling vehicle workflow system",
+      "strategy": "process_context"
     }
   ],
   "counts_written": {
-    "accepted": 10,
-    "rejected": 6,
-    "failed": 0
+    "accepted": 3,
+    "rejected": 2,
+    "failed": 2
   }
 }

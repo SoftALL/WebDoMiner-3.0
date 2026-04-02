@@ -1,0 +1,19 @@
+FleetOpt Requirements Specification
+
+FleetOpt is a web-based logistics operations platform intended for regional delivery companies. The goal of the system is to streamline order scheduling, vehicle assignment, route planning, driver availability management, package tracking, and billing coordination. The system shall support dispatchers, drivers, operations managers, and administrators while preserving security, auditability, and operational efficiency.
+
+The platform shall provide an order scheduling module that allows dispatch staff to create, update, cancel, and reschedule delivery jobs. The scheduling workflow shall consider package priority, delivery windows, vehicle capacity, driver shift availability, and depot operating hours. The system shall prevent conflicting assignments and shall warn staff when jobs overlap with blocked time, unavailable vehicles, or unavailable drivers.
+
+The vehicle and driver management component shall allow administrators to define vehicle capacity, maintenance periods, fuel type, driver working days, break times, leave periods, and emergency unavailability. The platform shall maintain a calendar view for each driver and vehicle and shall support same-day adjustments when urgent deliveries need to be inserted. The system should also allow the company to reserve delivery capacity for high-priority customers.
+
+The package tracking module shall allow authorized staff to search, view, and update order details, shipment status, pickup history, delivery attempts, customer notes, and proof-of-delivery references. The system shall include role-based access control so that only authorized personnel can access sensitive delivery information. Access to shipment records shall be logged for auditing purposes, and changes to shipment status shall preserve traceability.
+
+The logistics resource tracking module shall monitor vehicles, loading bays, handheld scanners, and limited packaging supplies required for daily delivery operations. The system shall support alerts when critical items fall below threshold levels and shall help dispatch staff avoid assigning jobs to unavailable vehicles or bays. The platform should support daily resource summaries for operations managers.
+
+The billing and payment coordination module shall connect completed deliveries to chargeable services. The system shall store invoice status, payment method, customer account status, and outstanding balance information. Staff shall be able to view unpaid invoices and identify customers who require billing follow-up before future deliveries are confirmed.
+
+The platform shall include notification support for dispatch updates, delay messages, delivery reminders, and route changes. Notifications may be delivered through email or SMS. The system should support automated reminders before scheduled deliveries and should track whether the customer has confirmed receipt or missed the delivery window.
+
+The reporting module shall support dashboards for delivery volume, failed deliveries, driver utilization, vehicle utilization, route efficiency, and common service categories. Administrators shall be able to review weekly and monthly trends to improve staffing, route planning, and resource allocation.
+
+Non-functional requirements include secure authentication, role-based authorization, audit logging, acceptable system response time during peak dispatch hours, and reliable handling of concurrent scheduling activity by multiple staff users.
