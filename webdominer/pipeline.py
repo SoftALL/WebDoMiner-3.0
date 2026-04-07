@@ -116,7 +116,7 @@ class WebDoMinerPipeline:
         summary_path = (
             Path(summary_output_file)
             if summary_output_file
-            else self.settings.data_output_dir / "summary.json"
+            else self.settings.summary_output_file
         )
 
         self.logger.info("Starting WebDoMiner pipeline.")
@@ -195,7 +195,9 @@ class WebDoMinerPipeline:
         failed_count = write_jsonl(all_failed_pages, failed_path)
 
         keyword_preview = [item.to_dict() for item in keyword_candidates]
-        query_preview = [item.to_dict() for item in search_queries[: min(25, len(search_queries))]]
+        query_preview = [
+            item.to_dict() for item in search_queries[: min(25, len(search_queries))]
+        ]
 
         summary_payload = {
             "summary": summary.to_dict(),

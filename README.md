@@ -182,6 +182,8 @@ Place your input file in `data/input/` or `examples/`, then run:
 python -m webdominer.cli --input "examples/sample_rs.txt"
 ```
 
+If no `--input` argument is provided, WebDoMiner uses the default example file at `examples/sample_rs.txt`.
+
 ### Common Options
 
 ```bash

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 from webdominer.pipeline import WebDoMinerPipeline
 from webdominer.settings import Settings
@@ -120,6 +119,7 @@ def build_settings_from_args(args: argparse.Namespace) -> Settings:
     if args.log_level is not None:
         settings.log_level = args.log_level.upper()
 
+    settings.validate()
     return settings
 
 
