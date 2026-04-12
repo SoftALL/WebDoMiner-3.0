@@ -8,6 +8,7 @@ WebDoMiner generates a domain-specific corpus from the open web using a natural-
 
 - [Overview](#overview)
 - [Colab Demo](#colab-demo)
+- [Video Demo](#video-demo)
 - [How It Works](#how-it-works)
   - [1. Keyword Extraction](#1-keyword-extraction)
   - [2. URL Discovery](#2-url-discovery)
@@ -55,6 +56,12 @@ An interactive Google Colab demo is available in:
 `notebooks/WebDoMiner_Colab_Demo.ipynb`
 
 The notebook demonstrates the project end to end using the packaged CLI and previews the generated accepted, rejected, failed, and summary outputs in a reviewer-friendly format.
+
+## Video Demo
+
+A short video demonstration of WebDoMiner is available at the link below:
+
+[Watch the WebDoMiner video demo](https://youtu.be/WhxlvFbeYxA)
 
 ## How It Works
 
